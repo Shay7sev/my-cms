@@ -1,8 +1,8 @@
 ---
 title: "google blog"
+description: "Rust 后端修正"
 pubDate: 2025-12-16
 draft: false
-description: "Lorem ipsum dolor sit amet"
 ---
 
 抱歉，这是我的疏忽。
