@@ -1,232 +1,267 @@
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, type SetStateAction } from "react"
 import { Editor } from "@bytemd/react"
 import gfm from "@bytemd/plugin-gfm"
 import "bytemd/dist/index.css"
+// 引入 Lucide 图标
+import { FileText, Save, Trash2, Moon, Sun, Plus, Github } from "lucide-react"
+// 引入 Shadcn 组件
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
+import { Toaster } from "@/components/ui/sonner"
+import { toast } from "sonner"
+// 引入主题管理 (需要你自己配置好 ThemeProvider，或者手动切换 class)
+import { useTheme } from "next-themes"
 
-// 简单的样式组件
-const containerStyle = {
-  display: "flex",
-  height: "100vh",
-  fontFamily: "sans-serif",
+// 定义类型接口
+interface PostSummary {
+  filename: string
+  title: string
+  draft: boolean
+  date: string
 }
-const inputStyle = {
-  width: "100%",
-  padding: "8px",
-  marginBottom: "10px",
-  border: "1px solid #ccc",
-  borderRadius: "4px",
-}
-const listItemStyle = (active: boolean) => ({
-  padding: "10px",
-  cursor: "pointer",
-  borderBottom: "1px solid #eee",
-  background: active ? "#e6f7ff" : "transparent",
-  color: active ? "#1890ff" : "#333",
-})
 
 export default function App() {
-  const [posts, setPosts] = useState<
-    Array<{
-      filename: string
-      title: string
-      draft: boolean
-      date: string
-    }>
-  >([])
-  const [currentFile, setCurrentFile] = useState(null) // 当前选中的文件名 (null 代表新建)
+  // --- 状态管理 ---
+  const [posts, setPosts] = useState<PostSummary[]>([])
+  const [currentFile, setCurrentFile] = useState<string | null>(null)
 
-  // 表单状态
   const [title, setTitle] = useState("")
-  const [desc, setDesc] = useState("") // [新增] description
+  const [desc, setDesc] = useState("")
   const [content, setContent] = useState("")
   const [draft, setDraft] = useState(false)
 
-  // 1. 加载文章列表
-  // 使用 useCallback 包裹 fetchPosts
-  const fetchPosts = useCallback(async () => {
+  // 主题控制
+  const { setTheme, theme } = useTheme()
+
+  // --- API 交互 ---
+
+  // 获取列表 (移除 useCallback 依赖，避免死循环)
+  const fetchPosts = async () => {
     try {
       const res = await fetch("http://localhost:5011/api/posts")
+      if (!res.ok) throw new Error("Network response was not ok")
       const data = await res.json()
       setPosts(data)
     } catch (e) {
-      console.error("Failed to fetch posts:", e)
+      toast.error("获取文章列表失败")
+      console.error(e)
     }
-  }, []) // 依赖数组为空，因为 fetch 不依赖组件内的其他变量
-
-  useEffect(() => {
-    fetchPosts()
-  }, [fetchPosts])
-
-  // 2. 加载单篇文章详情
-  const loadPost = async (filename: string) => {
-    const res = await fetch(`http://localhost:5011/api/posts/${filename}`)
-    const data = await res.json()
-    setCurrentFile(data.filename)
-    setTitle(data.title)
-    setDesc(data.description)
-    setContent(data.content)
-    setDraft(data.draft)
   }
 
-  // 3. 重置表单 (点击新建时)
+  // 初始化加载
+  useEffect(() => {
+    fetchPosts()
+  }, [])
+
+  // 加载单篇文章
+  const loadPost = async (filename: string) => {
+    try {
+      const res = await fetch(`http://localhost:5011/api/posts/${filename}`)
+      const data = await res.json()
+      setCurrentFile(data.filename)
+      setTitle(data.title)
+      setDesc(data.description || "") // 增加空值保护
+      setContent(data.content)
+      setDraft(data.draft)
+    } catch (e) {
+      console.log(e)
+      toast.error("加载文章失败")
+    }
+  }
+
+  // 重置/新建
   const resetForm = () => {
     setCurrentFile(null)
     setTitle("")
     setDesc("")
     setContent("")
     setDraft(false)
+    toast.info("已切换到新建模式")
   }
 
-  // 4. 保存文章
+  // 保存
   const handleSave = async () => {
-    if (!title || !desc) {
-      alert("标题和描述必填！")
+    if (!title.trim() || !desc.trim()) {
+      toast.warning("标题和描述不能为空")
       return
     }
 
     const payload = {
-      filename: currentFile, // 如果是 null，后端会新建
+      filename: currentFile,
       title,
       description: desc,
       content,
       draft,
     }
 
-    const res = await fetch("http://localhost:5011/api/posts", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
+    try {
+      const res = await fetch("http://localhost:5011/api/posts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
 
-    if (res.ok) {
-      alert("保存成功")
-      fetchPosts() // 刷新列表
-      if (!currentFile) {
-        // 如果是新建，这里简单重置，实际项目可以根据后端返回的新文件名自动选中
-        resetForm()
+      if (res.ok) {
+        toast.success(currentFile ? "文章更新成功" : "新文章已创建")
+        fetchPosts()
+        if (!currentFile) resetForm()
+      } else {
+        throw new Error("Save failed")
       }
+    } catch (e) {
+      console.log(e)
+      toast.error("保存失败")
     }
   }
 
-  // 5. 删除文章
+  // 删除
   const handleDelete = async () => {
-    if (!currentFile || !confirm(`确定删除 ${currentFile} 吗?`)) return
+    if (!currentFile) return
+    // 使用原生 confirm 或者 shadcn 的 AlertDialog (这里为了简化用 confirm)
+    if (!confirm(`确定要永久删除 "${title}" 吗?`)) return
 
-    const res = await fetch(`http://localhost:5011/api/posts/${currentFile}`, {
-      method: "DELETE",
-    })
-    if (res.ok) {
-      alert("删除成功")
-      resetForm()
-      fetchPosts()
+    try {
+      const res = await fetch(
+        `http://localhost:5011/api/posts/${currentFile}`,
+        {
+          method: "DELETE",
+        }
+      )
+      if (res.ok) {
+        toast.success("删除成功")
+        resetForm()
+        fetchPosts()
+      }
+    } catch (e) {
+      console.log(e)
+      toast.error("删除失败")
     }
   }
 
+  // 同步
   const handleSync = async () => {
-    const res = await fetch("http://localhost:5011/api/sync", {
+    const promise = fetch("http://localhost:5011/api/sync", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        message: "同步 Github",
-      }),
-    }) // 注意 body
-    if (res.ok) alert("同步成功")
-    else alert("同步失败")
+      body: JSON.stringify({ message: "Sync from Admin Dashboard" }),
+    })
+
+    toast.promise(promise, {
+      loading: "正在推送到 GitHub...",
+      success: "同步成功！",
+      error: "同步失败，请检查后端日志",
+    })
   }
 
   return (
-    <div style={containerStyle}>
-      {/* 左侧侧边栏 */}
-      <div
-        style={{
-          width: "250px",
-          borderRight: "1px solid #ddd",
-          padding: "10px",
-          background: "#f9f9f9",
-          overflowY: "auto",
-        }}
-      >
-        <button
-          onClick={resetForm}
-          style={{
-            width: "100%",
-            padding: "10px",
-            marginBottom: "10px",
-            cursor: "pointer",
-          }}
-        >
-          + 新建文章
-        </button>
-        {posts.map((post) => (
-          <div
-            key={post.filename}
-            style={listItemStyle(currentFile === post.filename)}
-            onClick={() => loadPost(post.filename)}
+    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden">
+      <Toaster /> {/* Toast 弹窗容器 */}
+      {/* --- 左侧侧边栏 --- */}
+      <aside className="w-64 border-r bg-muted/30 flex flex-col">
+        <div className="p-4 border-b flex items-center justify-between">
+          <span className="font-bold text-lg flex items-center gap-2">
+            <FileText className="w-5 h-5" /> Blog Admin
+          </span>
+          {/* 主题切换按钮 */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
           >
-            <div style={{ fontWeight: "bold" }}>{post.title}</div>
-            <div style={{ fontSize: "12px", color: "#888" }}>
-              {post.draft ? "📝 草稿" : "✅ 发布"} - {post.date}
+            <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+            <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          </Button>
+        </div>
+
+        <div className="p-4 pb-2">
+          <Button onClick={resetForm} className="w-full gap-2">
+            <Plus className="w-4 h-4" /> 新建文章
+          </Button>
+        </div>
+
+        <ScrollArea className="flex-1">
+          <div className="p-4 pt-0 space-y-2">
+            {posts.map((post) => (
+              <div
+                key={post.filename}
+                onClick={() => loadPost(post.filename)}
+                className={`
+                  p-3 rounded-lg cursor-pointer transition-colors border
+                  ${
+                    currentFile === post.filename
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "hover:bg-accent hover:text-accent-foreground bg-card border-border"
+                  }
+                `}
+              >
+                <div className="font-medium truncate">{post.title}</div>
+                <div className="flex items-center justify-between mt-2 text-xs opacity-80">
+                  <Badge
+                    variant={post.draft ? "secondary" : "default"}
+                    className="text-[10px] px-1 py-0 h-5"
+                  >
+                    {post.draft ? "草稿" : "发布"}
+                  </Badge>
+                  <span>{post.date}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </ScrollArea>
+
+        <div className="p-4 border-t text-xs text-center text-muted-foreground">
+          {posts.length} 篇文章
+        </div>
+      </aside>
+      {/* --- 右侧主编辑区 --- */}
+      <main className="flex-1 flex flex-col h-full overflow-hidden bg-background">
+        {/* 顶部工具栏 */}
+        <header className="p-4 border-b flex items-center gap-4 bg-background z-10">
+          <div className="flex-1 grid grid-cols-2 gap-4">
+            <Input
+              value={title}
+              onChange={(e: { target: { value: SetStateAction<string> } }) =>
+                setTitle(e.target.value)
+              }
+              placeholder="输入文章标题..."
+              className="font-bold text-lg h-10"
+            />
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">
+                Draft:
+              </span>
+              <Checkbox
+                checked={draft}
+                onCheckedChange={(checked: boolean) => setDraft(checked)}
+                id="draft-mode"
+              />
+              <span className="text-xs text-muted-foreground ml-auto truncate">
+                {currentFile || "未保存的新文件"}
+              </span>
             </div>
           </div>
-        ))}
-      </div>
+        </header>
 
-      {/* 右侧编辑区 */}
-      <div
-        style={{
-          flex: 1,
-          padding: "20px",
-          display: "flex",
-          flexDirection: "column",
-          overflowY: "auto",
-        }}
-      >
-        <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="文章标题"
-            style={{ ...inputStyle, flex: 1 }}
-          />
-          <input
+        {/* 描述区域 */}
+        <div className="px-4 py-2 border-b bg-muted/10">
+          <Textarea
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
-            placeholder="简短描述 (Description)"
-            style={{ ...inputStyle, flex: 2 }}
+            placeholder="输入简短描述 (SEO Description)..."
+            className="resize-none h-16 text-sm"
           />
         </div>
 
-        <div
-          style={{
-            marginBottom: "10px",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-          }}
-        >
-          <label>
-            <input
-              type="checkbox"
-              checked={draft}
-              onChange={(e) => setDraft(e.target.checked)}
-            />{" "}
-            设为草稿
-          </label>
-          {currentFile && (
-            <span style={{ fontSize: "12px", color: "#999" }}>
-              当前编辑: {currentFile}
-            </span>
-          )}
-        </div>
-
-        <div
-          style={{
-            flex: 1,
-            border: "1px solid #ddd",
-            borderRadius: "4px",
-            overflow: "hidden",
-          }}
-        >
+        {/* 编辑器核心区域 */}
+        <div className="flex-1 overflow-hidden relative">
+          {/* 
+            注意：ByteMD 的高度由外层 CSS 类控制 (.bytemd)
+            我们在 index.css 中设置了 .bytemd { height: 100% }
+          */}
           <Editor
             value={content}
             plugins={[gfm()]}
@@ -234,54 +269,33 @@ export default function App() {
           />
         </div>
 
-        <div style={{ marginTop: "20px", display: "flex", gap: "10px" }}>
-          <button
-            onClick={handleSave}
-            style={{
-              padding: "10px 20px",
-              background: "#1890ff",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
-            保存 / 发布
-          </button>
+        {/* 底部操作栏 */}
+        <footer className="p-4 border-t bg-muted/20 flex items-center gap-3">
+          <Button onClick={handleSave} className="gap-2">
+            <Save className="w-4 h-4" /> 保存 / 发布
+          </Button>
 
           {currentFile && (
-            <button
+            <Button
+              variant="destructive"
               onClick={handleDelete}
-              style={{
-                padding: "10px 20px",
-                background: "#ff4d4f",
-                color: "#fff",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
+              className="gap-2"
             >
-              删除
-            </button>
+              <Trash2 className="w-4 h-4" /> 删除
+            </Button>
           )}
 
-          <div style={{ flex: 1 }}></div>
+          <div className="flex-1"></div>
 
-          <button
+          <Button
+            variant="outline"
             onClick={handleSync}
-            style={{
-              padding: "10px 20px",
-              background: "#52c41a",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
+            className="gap-2 border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
           >
-            同步到 GitHub
-          </button>
-        </div>
-      </div>
+            <Github className="w-4 h-4" /> 同步到 GitHub
+          </Button>
+        </footer>
+      </main>
     </div>
   )
 }
