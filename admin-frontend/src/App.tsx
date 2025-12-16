@@ -1,6 +1,5 @@
 import { useState, useEffect, type SetStateAction } from "react"
 import { Editor } from "@bytemd/react"
-import gfm from "@bytemd/plugin-gfm"
 import "bytemd/dist/index.css"
 // 引入 Lucide 图标
 import { FileText, Save, Trash2, Moon, Sun, Plus, Github } from "lucide-react"
@@ -15,6 +14,20 @@ import { Toaster } from "@/components/ui/sonner"
 import { toast } from "sonner"
 // 引入主题管理 (需要你自己配置好 ThemeProvider，或者手动切换 class)
 import { useTheme } from "next-themes"
+
+// 引入 github markdown 样式（基础排版）
+import "github-markdown-css/github-markdown.css"
+import "bytemd/dist/index.css"
+
+// --- 2. 引入插件 ---
+import gfm from "@bytemd/plugin-gfm"
+import highlight from "@bytemd/plugin-highlight"
+import mermaid from "@bytemd/plugin-mermaid"
+import mediumZoom from "@bytemd/plugin-medium-zoom"
+import gemoji from "@bytemd/plugin-gemoji"
+
+// 定义插件列表
+const plugins = [gfm(), highlight(), mermaid(), mediumZoom(), gemoji()]
 
 // 定义类型接口
 interface PostSummary {
@@ -170,8 +183,7 @@ export default function App() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
           </Button>
@@ -196,14 +208,12 @@ export default function App() {
                       ? "bg-primary text-primary-foreground border-primary"
                       : "hover:bg-accent hover:text-accent-foreground bg-card border-border"
                   }
-                `}
-              >
+                `}>
                 <div className="font-medium truncate">{post.title}</div>
                 <div className="flex items-center justify-between mt-2 text-xs opacity-80">
                   <Badge
                     variant={post.draft ? "secondary" : "default"}
-                    className="text-[10px] px-1 py-0 h-5"
-                  >
+                    className="text-[10px] px-1 py-0 h-5">
                     {post.draft ? "草稿" : "发布"}
                   </Badge>
                   <span>{post.date}</span>
@@ -264,7 +274,7 @@ export default function App() {
           */}
           <Editor
             value={content}
-            plugins={[gfm()]}
+            plugins={plugins}
             onChange={(v) => setContent(v)}
           />
         </div>
@@ -279,8 +289,7 @@ export default function App() {
             <Button
               variant="destructive"
               onClick={handleDelete}
-              className="gap-2"
-            >
+              className="gap-2">
               <Trash2 className="w-4 h-4" /> 删除
             </Button>
           )}
@@ -290,8 +299,7 @@ export default function App() {
           <Button
             variant="outline"
             onClick={handleSync}
-            className="gap-2 border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-950"
-          >
+            className="gap-2 border-green-600 text-green-600 hover:bg-green-50 dark:hover:bg-green-950">
             <Github className="w-4 h-4" /> 同步到 GitHub
           </Button>
         </footer>

@@ -1,6 +1,6 @@
 ---
 title: "google blog"
-description: "Rust 后端修正1"
+description: "Rust 后端修正"
 pubDate: 2025-12-16
 draft: false
 ---

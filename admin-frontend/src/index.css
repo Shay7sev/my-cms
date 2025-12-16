@@ -50,47 +50,6 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
-}
-
-body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
@@ -188,28 +147,112 @@ button:focus-visible {
   }
 }
 
+/* =========================================
+   ByteMD 自定义覆盖样式 (Dark Mode & Layout)
+   ========================================= */
 
-/* --- 修复 ByteMD 高度并适配 Dark Mode --- */
+/* 1. 强制高度填满父容器 */
 .bytemd {
-  height: 100%; /* 关键：强制填满父容器 */
+  /* height: 100% !important; */
+  height: calc(100vh - 225px) !important;
+  flex: 1;
+  min-height: 0 !important; /* 防止 flex 布局溢出 */
   border: none !important;
-  border-radius: 0.5rem;
+  display: flex !important;
+  flex-direction: column;
 }
 
-/* 隐藏 ByteMD 默认的边框，使用我们自己的容器边框 */
+/* 2. Toolbar 适配 */
 .bytemd-toolbar {
-  border-bottom: 1px solid hsl(var(--border)) !important;
   background-color: hsl(var(--card)) !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
   color: hsl(var(--foreground)) !important;
+  padding: 0 12px !important;
 }
 
+/* Tooltip 背景色 */
+.bytemd-toolbar-icon:hover {
+  background-color: hsl(var(--accent)) !important;
+}
+
+/* 3. 编辑区与预览区布局 */
 .bytemd-body {
+  flex: 1;
+  height: auto !important; /* 让 body 自适应剩余空间 */
   background-color: hsl(var(--background)) !important;
   color: hsl(var(--foreground)) !important;
 }
 
-/* 适配 Dark Mode 下的 markdown 预览文字颜色 */
+/* 代码编辑区域 (CodeMirror) */
+.bytemd-editor {
+  background-color: transparent !important;
+}
+
+/* CodeMirror 内部样式适配 DarkMode */
+.dark .CodeMirror {
+  background-color: hsl(var(--background)) !important;
+  color: #e5e7eb !important;
+}
+.dark .CodeMirror-cursor {
+  border-left: 1px solid #fff !important;
+}
+.dark .CodeMirror-gutters {
+  background-color: hsl(var(--muted)) !important;
+  border-right: 1px solid hsl(var(--border)) !important;
+}
+
+/* 4. 预览区域 (Markdown Body) 深度适配 */
+.markdown-body {
+  font-family: inherit !important;
+  background-color: transparent !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* Dark Mode 下 Markdown 内容的颜色修正 */
 .dark .markdown-body {
-  color: #e5e7eb;
-  background-color: transparent;
+  color-scheme: dark;
+}
+
+.dark .markdown-body h1,
+.dark .markdown-body h2,
+.dark .markdown-body h3,
+.dark .markdown-body h4 {
+  border-bottom-color: hsl(var(--border)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+.dark .markdown-body code {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--primary)) !important;
+}
+
+.dark .markdown-body pre {
+  background-color: #1e1e1e !important; /* 代码块深色背景 */
+  border: 1px solid hsl(var(--border));
+}
+
+.dark .markdown-body blockquote {
+  border-left-color: hsl(var(--border)) !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .markdown-body table tr {
+  background-color: transparent !important;
+  border-top-color: hsl(var(--border)) !important;
+}
+
+.dark .markdown-body table tr:nth-child(2n) {
+  background-color: hsl(var(--muted) / 0.3) !important;
+}
+
+/* Split pane 分割线 */
+.bytemd-split .bytemd-preview {
+  border-left: 1px solid hsl(var(--border)) !important;
+}
+
+/* Status footer */
+.bytemd-status {
+  border-top: 1px solid hsl(var(--border)) !important;
+  background-color: hsl(var(--card)) !important;
+  color: hsl(var(--muted-foreground)) !important;
 }
