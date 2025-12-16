@@ -7,12 +7,21 @@ use axum::{
 };
 use gray_matter::{engine::YAML, Matter};
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf, process::Command};
+use std::{env, fs, path::PathBuf, process::Command};
 use tower_http::{cors::CorsLayer, services::ServeDir};
 use walkdir::WalkDir; // 解析 Frontmatter
 
 // 配置你的博客内容路径 (根据实际情况修改)
-const BLOG_CONTENT_PATH: &str = "../blog/src/content/blog";
+// const BLOG_CONTENT_PATH: &str = "../blog/src/content/blog";
+
+fn get_content_path() -> String {
+    env::var("BLOG_CONTENT_PATH").unwrap_or_else(|_| "../blog/src/content/blog".to_string())
+}
+
+// 新增：获取项目根目录 (Git 执行的地方)
+fn get_project_root() -> String {
+    env::var("PROJECT_ROOT").unwrap_or_else(|_| "..".to_string()) // 本地开发回退到 ..
+}
 
 #[tokio::main]
 async fn main() {
@@ -77,7 +86,7 @@ async fn list_posts() -> Json<Vec<PostSummary>> {
     let mut posts = Vec::new();
     let matter = Matter::<YAML>::new();
 
-    for entry in WalkDir::new(BLOG_CONTENT_PATH)
+    for entry in WalkDir::new(get_content_path())
         .into_iter()
         .filter_map(|e| e.ok())
     {
@@ -120,7 +129,7 @@ async fn list_posts() -> Json<Vec<PostSummary>> {
 // 2. 获取单篇文章详情 (用于回显)
 // 2. 获取单篇文章详情
 async fn get_post(Path(filename): Path<String>) -> impl IntoResponse {
-    let path = PathBuf::from(BLOG_CONTENT_PATH).join(&filename);
+    let path = PathBuf::from(get_content_path()).join(&filename);
     let matter = Matter::<YAML>::new();
 
     match fs::read_to_string(path) {
@@ -167,7 +176,7 @@ async fn save_post(Json(payload): Json<PostDetail>) -> StatusCode {
         }
     };
 
-    let path = PathBuf::from(BLOG_CONTENT_PATH).join(&filename);
+    let path = PathBuf::from(get_content_path()).join(&filename);
 
     // 构建 Frontmatter
     let file_content = format!(
@@ -190,7 +199,7 @@ async fn save_post(Json(payload): Json<PostDetail>) -> StatusCode {
 
 // 4. 删除文章
 async fn delete_post(Path(filename): Path<String>) -> StatusCode {
-    let path = PathBuf::from(BLOG_CONTENT_PATH).join(&filename);
+    let path = PathBuf::from(get_content_path()).join(&filename);
     match fs::remove_file(path) {
         Ok(_) => StatusCode::OK,
         Err(_) => StatusCode::INTERNAL_SERVER_ERROR,
@@ -204,11 +213,12 @@ struct SyncRequest {
 }
 
 async fn git_sync(Json(payload): Json<SyncRequest>) -> Result<String, StatusCode> {
-    // 执行 git add .
+    let root_dir = get_project_root(); // 获取环境变量路径
+                                       // 执行 git add .
     let add = Command::new("git")
         .arg("add")
         .arg(".")
-        .current_dir("..") // 在根目录执行
+        .current_dir(&root_dir) // 在根目录执行
         .output();
 
     if add.is_err() {
@@ -220,13 +230,16 @@ async fn git_sync(Json(payload): Json<SyncRequest>) -> Result<String, StatusCode
         .arg("commit")
         .arg("-m")
         .arg(&payload.message)
-        .current_dir("..")
+        .current_dir(&root_dir)
         .output();
 
     // 允许 commit 失败（比如没有变化时），但也需要处理
 
     // 执行 git push
-    let push = Command::new("git").arg("push").current_dir("..").output();
+    let push = Command::new("git")
+        .arg("push")
+        .current_dir(&root_dir)
+        .output();
 
     match push {
         Ok(output) => {
