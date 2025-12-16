@@ -31,10 +31,13 @@ async fn main() {
 // 数据结构：文章
 #[derive(Debug, Serialize, Deserialize)]
 struct Post {
-    filename: String,
+    // 1. 改为 Option，允许前端不传这个字段（新建文章时）
+    filename: Option<String>,
     title: String,
     content: String,
-    // 其他 frontmatter 字段...
+    // 2. 补上 draft 字段，之前漏了
+    #[serde(default)] // 如果前端没传，默认 false
+    draft: bool,
 }
 
 // 1. 获取文章列表
@@ -55,13 +58,30 @@ async fn list_posts() -> Json<Vec<String>> {
 
 // 2. 创建或更新文章 (简化版)
 async fn create_post(Json(payload): Json<Post>) -> StatusCode {
-    let file_path = PathBuf::from(BLOG_CONTENT_PATH).join(&payload.filename);
+    // 3. 核心逻辑：如果有 filename 就用，没有就根据 title 生成
+    let actual_filename = match payload.filename {
+        Some(name) => name,
+        None => {
+            // 简单的 slug 生成逻辑：转小写，空格变横杠，只保留安全字符
+            let slug: String = payload
+                .title
+                .to_lowercase()
+                .chars()
+                .map(|c| if c.is_alphanumeric() { c } else { '-' })
+                .collect();
+            // 处理连续的横杠（可选优化），并加上后缀
+            format!("{}.md", slug)
+        }
+    };
 
-    // 构建 Markdown 内容 (含 Frontmatter)
+    let file_path = PathBuf::from(BLOG_CONTENT_PATH).join(&actual_filename);
+
+    // 4. 构建 Markdown 内容 (处理 draft)
     let file_content = format!(
-        "---\ntitle: \"{}\"\npubDate: {}\n---\n\n{}",
+        "---\ntitle: \"{}\"\npubDate: {}\ndraft: {}\n---\n\n{}",
         payload.title,
         chrono::Local::now().format("%Y-%m-%d"),
+        payload.draft,
         payload.content
     );
 
