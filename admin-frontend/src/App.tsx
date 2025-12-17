@@ -55,7 +55,7 @@ export default function App() {
   // 获取列表 (移除 useCallback 依赖，避免死循环)
   const fetchPosts = async () => {
     try {
-      const res = await fetch("http://localhost:5011/api/posts")
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/posts`)
       if (!res.ok) throw new Error("Network response was not ok")
       const data = await res.json()
       setPosts(data)
@@ -73,7 +73,9 @@ export default function App() {
   // 加载单篇文章
   const loadPost = async (filename: string) => {
     try {
-      const res = await fetch(`http://localhost:5011/api/posts/${filename}`)
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/posts/${filename}`
+      )
       const data = await res.json()
       setCurrentFile(data.filename)
       setTitle(data.title)
@@ -112,7 +114,7 @@ export default function App() {
     }
 
     try {
-      const res = await fetch("http://localhost:5011/api/posts", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/posts`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -139,7 +141,7 @@ export default function App() {
 
     try {
       const res = await fetch(
-        `http://localhost:5011/api/posts/${currentFile}`,
+        `${import.meta.env.VITE_API_URL}/api/posts/${currentFile}`,
         {
           method: "DELETE",
         }
@@ -157,7 +159,7 @@ export default function App() {
 
   // 同步
   const handleSync = async () => {
-    const promise = fetch("http://localhost:5011/api/sync", {
+    const promise = fetch(`${import.meta.env.VITE_API_URL}/api/sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message: "Sync from Admin Dashboard" }),

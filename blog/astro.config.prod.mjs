@@ -11,13 +11,13 @@ import node from "@astrojs/node";
 // https://astro.build/config
 export default defineConfig({
   site: "https://astro.shay7sev.site",
-  base: "/blog",
+  trailingSlash: "always",
   integrations: [mdx(), sitemap()],
 
   vite: {
     plugins: [tailwindcss()],
   },
-  output: "server",
+  //   output: "server",
   adapter: node({
     mode: "standalone",
   }),
