@@ -6,15 +6,21 @@ import { defineConfig } from "astro/config";
 
 import tailwindcss from "@tailwindcss/vite";
 
+import node from "@astrojs/node";
+
 // https://astro.build/config
 export default defineConfig({
   site: "https://astro.shay7sev.site",
-  //   base: "./blog",
+  base: "/blog",
   integrations: [mdx(), sitemap()],
 
   vite: {
     plugins: [tailwindcss()],
   },
+  output: "server",
+  adapter: node({
+    mode: "standalone",
+  }),
   server: {
     host: true, // 等价 0.0.0.0
     port: 4321,

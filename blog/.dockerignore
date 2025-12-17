@@ -1,0 +1,9 @@
+# 忽略依赖（我们会在容器内通过 pnpm 安装）
+node_modules/
+# pnpm-lock.yaml # 可选：如果你希望容器内重新解析依赖版本，可以忽略；但在生产中通常建议保留以锁定版本
+.DS_Store
+.git/
+.env
+.astro/
+dist/
+target/

@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  # Astro 前端 (Dev 模式)
+  blog:
+    build:
+      context: ./blog
+    ports:
+      - "4321:4321"
+    volumes:
+      # 【核心】挂载 content 目录，实现双向同步
+      # 当 Rust 修改宿主机文件 -> 映射到容器内 -> Astro Dev Server 捕获 -> 自动刷新页面
+      - ./blog/src/content:/app/src/content
+      # 挂载 astro.config.mjs (可选，方便调试配置)
+      - ./blog/astro.config.mjs:/app/astro.config.mjs
+    environment:
+      - HOST=0.0.0.0
+    restart: always
+
+  # Rust 后端 (API)
+  api:
+    build:
+      context: ./admin-core
+    ports:
+      - "5011:5011"
+    volumes:
+      # 必须映射同一个宿主机路径
+      - ./blog/src/content/blog:/data/content/blog/src/content/blog
+      - ./:/workspace
+      - ~/.ssh:/root/.ssh:ro
+    environment:
+      - BLOG_CONTENT_PATH=/data/content/blog/src/content/blog
+      - PROJECT_ROOT=/workspace
+      # ... git user config ...
+      - GIT_AUTHOR_NAME=shay7sev
+      - GIT_AUTHOR_EMAIL=shay7sev@gmail.com
+    depends_on:
+      - blog

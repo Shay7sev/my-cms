@@ -1,7 +1,7 @@
 ---
 title: "google blog"
-description: "Rust 后端修正123"
-pubDate: 2025-12-16
+description: "Rust 后端修正"
+pubDate: 2025-12-17
 draft: false
 ---
 
@@ -82,22 +82,22 @@ async fn create_post(Json(payload): Json<Post>) -> StatusCode {
 但为了先跑通流程，你可以保持之前的代码不变，或者使用下面这个**更完善的版本**：
 
 ```jsx
-import { useState } from "react"
-import { Editor } from "@bytemd/react"
-import gfm from "@bytemd/plugin-gfm"
-import "bytemd/dist/index.css"
+import { useState } from "react";
+import { Editor } from "@bytemd/react";
+import gfm from "@bytemd/plugin-gfm";
+import "bytemd/dist/index.css";
 
 export default function App() {
-  const [value, setValue] = useState("")
-  const [title, setTitle] = useState("")
+  const [value, setValue] = useState("");
+  const [title, setTitle] = useState("");
   // 新增：记录当前编辑的文件名。如果是新建，它就是 null
-  const [currentFilename, setCurrentFilename] = useState(null)
+  const [currentFilename, setCurrentFilename] = useState(null);
 
   const handleSave = async (isDraft) => {
     // 简单的校验
     if (!title) {
-      alert("请输入标题")
-      return
+      alert("请输入标题");
+      return;
     }
 
     const payload = {
@@ -106,26 +106,26 @@ export default function App() {
       title: title,
       content: value,
       draft: isDraft,
-    }
+    };
 
     try {
       const res = await fetch("http://localhost:8080/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      })
+      });
 
       if (res.ok) {
-        alert("保存成功！")
+        alert("保存成功！");
         // 保存成功后，最好清空或者获取生成的文件名（这里简化处理，暂不回填）
       } else {
-        alert("保存失败，请检查后端控制台")
+        alert("保存失败，请检查后端控制台");
       }
     } catch (e) {
-      console.error(e)
-      alert("请求错误")
+      console.error(e);
+      alert("请求错误");
     }
-  }
+  };
 
   return (
     <div style={{ padding: 20, maxWidth: 1200, margin: "0 auto" }}>
@@ -192,7 +192,7 @@ export default function App() {
         </button>
       </div>
     </div>
-  )
+  );
 }
 ```
 

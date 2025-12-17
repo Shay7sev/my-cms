@@ -1,14 +1,15 @@
+use axum::http::Method;
 use axum::{
     extract::{Json, Path},
     http::StatusCode,
     response::IntoResponse,
-    routing::{delete, get, post},
+    routing::{get, post},
     Router,
 };
 use gray_matter::{engine::YAML, Matter};
 use serde::{Deserialize, Serialize};
 use std::{env, fs, path::PathBuf, process::Command};
-use tower_http::{cors::CorsLayer, services::ServeDir};
+use tower_http::cors::{Any, CorsLayer}; // 或者指定具体的 Origin
 use walkdir::WalkDir; // 解析 Frontmatter
 
 // 配置你的博客内容路径 (根据实际情况修改)
@@ -25,14 +26,17 @@ fn get_project_root() -> String {
 
 #[tokio::main]
 async fn main() {
-    let serve_dir = ServeDir::new("assets");
+    let cors = CorsLayer::new()
+        // 生产环境建议把 allow_origin 改为具体域名，如 "https://admin.example.com".parse()
+        .allow_origin(Any)
+        .allow_methods([Method::GET, Method::POST, Method::DELETE])
+        .allow_headers(Any);
     // 允许跨域，方便你开发管理前端
     let app = Router::new()
         .route("/api/posts", get(list_posts).post(save_post))
         .route("/api/posts/:filename", get(get_post).delete(delete_post)) // 增加 Get 和 Delete
         .route("/api/sync", post(git_sync))
-        .fallback_service(serve_dir)
-        .layer(CorsLayer::permissive());
+        .layer(cors);
 
     println!("Admin server running at http://localhost:5011");
     let listener = tokio::net::TcpListener::bind("0.0.0.0:5011").await.unwrap();

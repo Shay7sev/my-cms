@@ -1,0 +1,7 @@
+version: "3.8"
+services:
+  admin-panel:
+    build: .
+    restart: always
+    ports:
+      - "6011:6011" # 映射到宿主机 3000，域名 admin.example.com 指向这里
