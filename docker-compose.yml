@@ -27,12 +27,14 @@ services:
       # 必须映射同一个宿主机路径
       - ./blog/src/content/blog:/data/content/blog/src/content/blog
       - ./:/workspace
-      - ~/.ssh:/root/.ssh:ro
+      - ~/.ssh:/tmp/ssh_mount:ro
     environment:
       - BLOG_CONTENT_PATH=/data/content/blog/src/content/blog
       - PROJECT_ROOT=/workspace
       # ... git user config ...
       - GIT_AUTHOR_NAME=shay7sev
       - GIT_AUTHOR_EMAIL=shay7sev@gmail.com
+      # 依然建议保留这个，防止第一次连接需要 yes/no 确认
+      - GIT_SSH_COMMAND=ssh -o StrictHostKeyChecking=no
     depends_on:
       - blog

@@ -7,3 +7,4 @@ draft: false
 
 * [ ] tanstack query
 * [ ] minio
+* [ ] rust clinet api for minio
