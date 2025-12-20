@@ -216,45 +216,45 @@ struct SyncRequest {
     message: String,
 }
 
+// 建议使用 log crate (如 tracing 或 log)，这里为了演示直接用 println!
+fn run_git_cmd(args: &[&str], dir: &str) -> Result<(), String> {
+    println!("Executing: git {} in {}", args.join(" "), dir);
+
+    let output = Command::new("git")
+        .args(args)
+        .current_dir(dir)
+        .output()
+        .map_err(|e| format!("Failed to execute command: {}", e))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        // 关键：打印错误详情
+        println!("Git Error [{}]:", args[0]);
+        println!("  Stderr: {}", stderr);
+        println!("  Stdout: {}", stdout);
+        return Err(stderr.to_string());
+    }
+    Ok(())
+}
+
 async fn git_sync(Json(payload): Json<SyncRequest>) -> Result<String, StatusCode> {
     let root_dir = get_project_root(); // 获取环境变量路径
                                        // 执行 git add .
-    let add = Command::new("git")
-        .arg("add")
-        .arg(".")
-        .current_dir(&root_dir) // 在根目录执行
-        .output();
-
-    if add.is_err() {
+                                       // 1. Git Add
+    if let Err(e) = run_git_cmd(&["add", "."], &root_dir) {
+        eprintln!("Git add failed: {}", e);
         return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
 
-    // 执行 git commit
-    let commit = Command::new("git")
-        .arg("commit")
-        .arg("-m")
-        .arg(&payload.message)
-        .current_dir(&root_dir)
-        .output();
+    // 2. Git Commit (允许失败，比如没有改动时)
+    let _ = run_git_cmd(&["commit", "-m", &payload.message], &root_dir);
 
-    // 允许 commit 失败（比如没有变化时），但也需要处理
-
-    // 执行 git push
-    let push = Command::new("git")
-        .arg("push")
-        .current_dir(&root_dir)
-        .output();
-
-    match push {
-        Ok(output) => {
-            if output.status.success() {
-                Ok("Sync successful!".to_string())
-            } else {
-                let err_msg = String::from_utf8_lossy(&output.stderr);
-                println!("Git Push Error: {}", err_msg);
-                Err(StatusCode::INTERNAL_SERVER_ERROR)
-            }
-        }
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    // 3. Git Push
+    if let Err(e) = run_git_cmd(&["push"], &root_dir) {
+        eprintln!("Git push failed: {}", e);
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
     }
+
+    Ok("Sync successful!".to_string())
 }
